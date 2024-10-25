@@ -58,14 +58,18 @@ class Dataset(base.Dataset):
         poses_raw = cam_data[...,:4] # [N,3,4]
         poses_raw[...,0],poses_raw[...,1] = poses_raw[...,1],-poses_raw[...,0]
         raw_H,raw_W,self.focal = cam_data[0,:,-1]
-        assert(self.raw_H==raw_H and self.raw_W==raw_W)
+        # assert(self.raw_H==raw_H and self.raw_W==raw_W)
+        self.raw_H = raw_H
+        self.raw_W = raw_W
         # parse depth bounds
         bounds = data[:,-2:] # [N,2]
         scale = 1./(bounds.min()*0.75) # not sure how this was determined
         poses_raw[...,3] *= scale
         bounds *= scale
+
         # roughly center camera poses
         poses_raw = self.center_camera_poses(opt,poses_raw)
+
         return poses_raw,bounds
 
     def center_camera_poses(self,opt,poses):
