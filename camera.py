@@ -294,14 +294,64 @@ def procrustes_analysis(X0,X1): # [N,3]
     sim3 = edict(t0=t0[0],t1=t1[0],s0=s0,s1=s1,R=R)
     return sim3
 
-def get_novel_view_poses(opt,pose_anchor,N=60,scale=1):
+def get_novel_view_poses(opt,pose_anchor,N=60,scale=1,top=False):
     # create circular viewpoints (small oscillations)
     theta = torch.arange(N)/N*2*np.pi
-    R_x = angle_to_rotation_matrix((theta.sin()*0.05).asin(),"X")
-    R_y = angle_to_rotation_matrix((theta.cos()*0.05).asin(),"Y")
-    pose_rot = pose(R=R_y@R_x)
+
+    if (top):
+        R_x = angle_to_rotation_matrix((theta.sin()*0.05).asin(),"X")
+        R_z = angle_to_rotation_matrix((theta.cos()*0.05).asin(),"Z")
+        pose_rot = pose(R=R_z@R_x)
+    else:
+        R_x = angle_to_rotation_matrix((theta.sin()*0.05).asin(),"X")
+        R_y = angle_to_rotation_matrix((theta.cos()*0.05).asin(),"Y")
+        pose_rot = pose(R=R_y@R_x)
+    
     pose_shift = pose(t=[0,0,-4*scale])
     pose_shift2 = pose(t=[0,0,3.8*scale])
     pose_oscil = pose.compose([pose_shift,pose_rot,pose_shift2])
     pose_novel = pose.compose([pose_oscil,pose_anchor.cpu()[None]])
     return pose_novel
+
+def normalize(x):
+    return x / np.linalg.norm(x)
+
+def get_novel_spiral_view(opt,poses,N=60):
+    # based on https://github.com/g-truc/glm/blob/33b4a621a697a305bc3a7610d290677b96beb181/glm/ext/matrix_transform.inl#L153
+    idx_center = (poses-poses.mean(dim=0,keepdim=True))[...,3].norm(dim=-1).argmin()
+    centerPose = poses[idx_center]
+    center = np.array([centerPose[..., 0, 3].item(), centerPose[..., 1, 3].item(), centerPose[..., 2, 3].item()])
+    # center = np.array([0, 0, 0])
+    
+    idx_top = poses[..., 1, 3].abs().argmax()
+    max_y = poses[idx_top, ..., 1, 3].abs().item()
+    radius = max_y # temporary placeholder
+
+    degree = np.linspace(0.0,2.0*np.pi, N)
+    vertical = np.linspace(-max_y, max_y, N)
+
+    poses_R = []
+    poses_t = []
+    for n in range(0, N):
+        theta = degree[n]
+
+        cam_x = radius * np.cos(theta)
+        cam_y = vertical[n]
+        cam_z = radius * np.sin(theta)
+
+        cam_positon = np.array([cam_x, cam_y, cam_z])
+        cam_positon += center
+        u = normalize(np.array([0.0, 1.0, 0.0]))
+
+        look = normalize(center - cam_positon)
+        right = normalize(np.cross(look, u))
+        up = np.cross(right, look)
+
+        R = np.stack([right, up, -look], 1)
+        poses_R.append(R)
+
+        t = np.array([-np.dot(right, cam_positon), -np.dot(up, cam_positon), np.dot(look, cam_positon)])
+        poses_t.append(t)
+
+    return pose(np.stack(poses_R, 0), np.stack(poses_t, 0))
+
