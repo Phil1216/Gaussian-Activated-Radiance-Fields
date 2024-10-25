@@ -29,7 +29,7 @@ def main():
         if opt.data.dataset in ["bleff", "blender","llff"]:
             m.evaluate_full(opt)
         #log.info("rendering novel views...")
-        m.generate_videos_synthesis(opt)
+        m.generate_videos_synthesis(opt, topCam = True)
         log.model("************************************************** Done **************************************************")
 
 

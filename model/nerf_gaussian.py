@@ -180,7 +180,7 @@ class Model(base.Model):
                 util_vis.tb_image(opt,self.tb,step,split,"invdepth_fine",invdepth_map)
 
     @torch.no_grad()
-    def generate_videos_synthesis(self,opt,eps=1e-10):
+    def generate_videos_synthesis(self,opt,eps=1e-10,topCam=None):
         self.graph.eval()
         if opt.data.dataset=="blender":
             test_path = "{}/test_view".format(opt.output_path)
@@ -198,8 +198,17 @@ class Model(base.Model):
                 scale = sim3.s1/sim3.s0
             else: scale = 1
             # rotate novel views around the "center" camera of all poses
-            idx_center = (poses-poses.mean(dim=0,keepdim=True))[...,3].norm(dim=-1).argmin()
-            pose_novel = camera.get_novel_view_poses(opt,poses[idx_center],N=60,scale=scale).to(opt.device)
+            if topCam is None:
+                idx_center = (poses-poses.mean(dim=0,keepdim=True))[...,3].norm(dim=-1).argmin()
+            elif topCam is True:
+                print("Using top camera")
+                idx_center = poses[..., 1, 3].argmax()
+            else:
+                print("Using bottom camera")
+                idx_center = poses[..., 1, 3].argmin()
+            
+            # pose_novel = camera.get_novel_view_poses(opt,poses[idx_center],N=60,scale=scale).to(opt.device)
+            pose_novel = camera.get_novel_spiral_view(opt, poses, N=60).to(opt.device)
             # render the novel views
             novel_path = "{}/novel_view".format(opt.output_path)
             os.makedirs(novel_path,exist_ok=True)
