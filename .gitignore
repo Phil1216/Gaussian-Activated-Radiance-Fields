@@ -1,0 +1,5 @@
+*.pyc
+*.png
+logs/
+logs2/
+nerf_synthetic/
