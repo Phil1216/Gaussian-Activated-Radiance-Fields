@@ -3,3 +3,6 @@
 logs/
 logs2/
 nerf_synthetic/
+data/llff/fern
+eval.sh
+run.sh
