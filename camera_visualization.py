@@ -59,8 +59,8 @@ class camera_visualizer:
         self.set_bound([self.lowerbond,self.upperbond],[self.lowerbond,self.upperbond],[self.lowerbond,self.upperbond])
         self.ax.legend(bbox_to_anchor=(-0.40, 1), loc='upper left')
         #self.ax.legend(loc='outside left lower', bbox_to_anchor=(0, 0.5))
-        self.fig.set_figwidth(20)
-        self.fig.set_figheight(20)
+        self.fig.set_figwidth(10)
+        self.fig.set_figheight(10)
 
     def show(self):
         plt.show()

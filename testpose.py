@@ -12,7 +12,7 @@ from tqdm import tqdm, trange
 import matplotlib.pyplot as plt
 
 import options
-from data.llff import Dataset as llffDataset
+from data.llff_mod import Dataset as llffDataset
 
 #from extrinsic2pyramid.util.camera_pose_visualizer import CameraPoseVisualizer
 #visualizer = CameraPoseVisualizer([-10, 10], [-10, 10], [-10, 10])
@@ -21,11 +21,11 @@ from data.llff import Dataset as llffDataset
 #visualizer = CameraPoseVisualizer([-0.5, 0.5], [-0.5, 0.5], [-3.75, -4.25])
 from camera_visualization import camera_visualizer
 visualizer = camera_visualizer()
-#images, poses, render_poses, hwf, i_split = load_blender_data('./data/nerf_synthetic/lego', True, 8)
+
 # breakpoint()
 
-# myOptionsDir = '/home/pr245/projects/butterfly/garf/logs/butterfly/bottom/options.yaml'
-myOptionsDir = '/home/pr245/projects/butterfly/garf/logs/0_test/fern/options.yaml'
+myOptionsDir = '/home/pr245/projects/butterfly/garf/logs/butterfly/up/options.yaml'
+# myOptionsDir = '/home/pr245/projects/butterfly/garf/logs/0_test/fern/options.yaml'
 opt = options.load_options(myOptionsDir)
 
 # disable train/test split
@@ -40,7 +40,6 @@ poses_eval = eval_data.get_all_camera_poses(opt).cpu().detach().numpy()
 #llff only
 #breakpoint()
 poses = np.concatenate([poses_train, poses_eval], 0)
-print(poses)
 poses = poses[:,:3,:4]
 
 
@@ -79,11 +78,11 @@ for count, i in enumerate(poses):
 #Remove 4 out of every 5 poses
 remove = np.arange(0, n_poses.shape[0], 5)
 remove = np.concatenate([np.arange(i, i + 4) for i in remove])
-n_poses = np.delete(n_poses, remove, axis = 0)
+# n_poses = np.delete(n_poses, remove, axis = 0)
 
-visualizer.plot_camera_scene(n_poses,0.5,"red","pose")
-# visualizer.save("test_b001_bottom_w2c.png")
-visualizer.save("test_fern_w2c.png")
+visualizer.plot_camera_scene(n_poses,0.2,"red","pose")
+visualizer.save("test_b001_up_w2c.png")
+# visualizer.save("test_fern_w2c.png")
 
-#visualizer.show()
+visualizer.show()
 #visualizer2.show()
