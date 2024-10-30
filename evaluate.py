@@ -26,7 +26,7 @@ def main():
             m.generate_videos_pose(opt)
 
         m.restore_checkpoint(opt)
-        if opt.data.dataset in ["bleff", "blender","llff"]:
+        if opt.data.dataset in ["bleff", "blender","llff", "llff_mod"]:
             m.evaluate_full(opt)
         #log.info("rendering novel views...")
         m.generate_videos_synthesis(opt, topCam = True)

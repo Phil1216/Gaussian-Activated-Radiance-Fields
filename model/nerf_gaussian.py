@@ -7,7 +7,7 @@ import torchvision.transforms.functional as torchvision_F
 import tqdm
 from easydict import EasyDict as edict
 
-import lpips
+# import lpips
 from external.pytorch_ssim import pytorch_ssim
 
 import util,util_vis
@@ -21,7 +21,7 @@ class Model(base.Model):
 
     def __init__(self,opt):
         super().__init__(opt)
-        self.lpips_loss = lpips.LPIPS(net="alex").to(opt.device)
+        # self.lpips_loss = lpips.LPIPS(net="alex").to(opt.device)
 
     def load_dataset(self,opt,eval_split="val"):
         super().load_dataset(opt,eval_split=eval_split)
@@ -140,8 +140,8 @@ class Model(base.Model):
             invdepth_map = invdepth.view(-1,opt.H,opt.W,1).permute(0,3,1,2) # [B,1,H,W]
             psnr = -10*self.graph.MSE_loss(rgb_map,var.image).log10().item()
             ssim = pytorch_ssim.ssim(rgb_map,var.image).item()
-            lpips = self.lpips_loss(rgb_map*2-1,var.image*2-1).item()
-            res.append(edict(psnr=psnr,ssim=ssim,lpips=lpips))
+            # lpips = self.lpips_loss(rgb_map*2-1,var.image*2-1).item()
+            res.append(edict(psnr=psnr,ssim=ssim))
             # dump novel views
             torchvision_F.to_pil_image(rgb_map.cpu()[0]).save("{}/rgb_{}.png".format(test_path,i))
             torchvision_F.to_pil_image(var.image.cpu()[0]).save("{}/rgb_GT_{}.png".format(test_path,i))
@@ -153,15 +153,16 @@ class Model(base.Model):
         message += "{:8.2f}\n".format(np.mean([r.psnr for r in res]))    
         message += util.green("SSIM:", bold=True)  
         message += "{:8.2f}\n".format(np.mean([r.ssim for r in res]))   
-        message += util.green("LPIPS:", bold=True)  
-        message += "{:8.2f}".format(np.mean([r.lpips for r in res]))   
+        # message += util.green("LPIPS:", bold=True)  
+        # message += "{:8.2f}".format(np.mean([r.lpips for r in res]))   
         print(message) 
         print("----------------------------------------------------------")
         # dump numbers to file
         quant_fname = "{}/quant.txt".format(opt.output_path)
         with open(quant_fname,"w") as file:
             for i,r in enumerate(res):
-                file.write("{} {} {} {}\n".format(i,r.psnr,r.ssim,r.lpips))
+                # file.write("{} {} {} {}\n".format(i,r.psnr,r.ssim,r.lpips))
+                file.write("{} {} {}\n".format(i,r.psnr,r.ssim))
 
     @torch.no_grad()
     def visualize_train(self,opt,var,step=0,split="train",eps=1e-10):
@@ -193,7 +194,7 @@ class Model(base.Model):
         else:
             pose_pred,pose_GT = self.get_all_training_poses(opt)
             poses = pose_pred if opt.model=="garf" else pose_GT
-            if opt.model=="garf" and opt.data.dataset in ["llff", "bleff"]:
+            if opt.model=="garf" and opt.data.dataset in ["llff", "bleff", "llff_mod"]:
                 _,sim3 = self.prealign_cameras(opt,pose_pred,pose_GT)
                 scale = sim3.s1/sim3.s0
             else: scale = 1
@@ -226,8 +227,8 @@ class Model(base.Model):
             log.info("Generating video of novel view synthesis...")
             rgb_vid_fname = "{}/novel_view_rgb.mp4".format(opt.output_path)
             depth_vid_fname = "{}/novel_view_depth.mp4".format(opt.output_path)
-            os.system("ffmpeg -y -framerate 30 -i {0}/rgb_%d.png -pix_fmt yuv420p {1} >/dev/null 2>&1".format(novel_path,rgb_vid_fname))
-            os.system("ffmpeg -y -framerate 30 -i {0}/depth_%d.png -pix_fmt yuv420p {1} >/dev/null 2>&1".format(novel_path,depth_vid_fname))
+            os.system("ffmpeg -y -framerate 20 -i {0}/rgb_%d.png -pix_fmt yuv420p {1} >/dev/null 2>&1".format(novel_path,rgb_vid_fname))
+            os.system("ffmpeg -y -framerate 20 -i {0}/depth_%d.png -pix_fmt yuv420p {1} >/dev/null 2>&1".format(novel_path,depth_vid_fname))
 
 # ============================ computation graph for forward/backprop ============================
 

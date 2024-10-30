@@ -67,17 +67,18 @@ class Dataset(base.Dataset):
         poses_raw[...,3] *= scale
         bounds *= scale
 
-        # invert before centering
-        row = torch.zeros(poses_raw.size(dim=0), 1, 4)
-        row[..., 3] = 1 # ie [[0,0,0,1]]
-        poses_raw = torch.cat((poses_raw, row), dim=1)
-        poses_raw = torch.linalg.inv(poses_raw)
-        poses_raw = poses_raw[:,:3,:4] # [N,3,4]        
-
         # roughly center camera poses
+        # centering appears to ruin circular scenes
         # poses_raw = self.center_camera_poses(opt,poses_raw)
 
         return poses_raw,bounds
+
+# Below is code to invert the poses, which turns out to be unnecessary
+# row = torch.zeros(poses_raw.size(dim=0), 1, 4)
+# row[..., 3] = 1 # ie [[0,0,0,1]]
+# poses_raw = torch.cat((poses_raw, row), dim=1)
+# poses_raw = torch.linalg.inv(poses_raw)
+# poses_raw = poses_raw[:,:3,:4] # [N,3,4]
 
     def center_camera_poses(self,opt,poses):
         # compute average pose
