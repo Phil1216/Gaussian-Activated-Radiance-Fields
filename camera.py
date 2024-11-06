@@ -202,15 +202,26 @@ def to_hom(X):
 # basic operations of transforming 3D points between world/camera/image coordinates
 def world2cam(X,pose): # [B,N,3]
     X_hom = to_hom(X)
+    # left multiply, and since this is not a view matrix, we rotate and then translate    
     return X_hom@pose.transpose(-1,-2)
+    #[[R R R 0]
+    # [R R R 0]
+    # [R R R 0]
+    # [t t t 1]]
 def cam2img(X,cam_intr):
     return X@cam_intr.transpose(-1,-2)
 def img2cam(X,cam_intr):
     return X@cam_intr.inverse().transpose(-1,-2)
 def cam2world(X,pose):
     X_hom = to_hom(X)
-    pose_inv = Pose().invert(pose)
+    # left multiply, and since this is not a view matrix, we translate and then rotate
+    pose_inv = Pose().invert(pose)    
     return X_hom@pose_inv.transpose(-1,-2)
+    #[[    R        R        R     0]
+    # [    R        R        R     0]
+    # [    R        R        R     0]
+    # [-R1 . t, -R2 . t, -R3 . t   1]]
+
 
 def angle_to_rotation_matrix(a,axis):
     # get the rotation matrix from Euler angle around specific axis
@@ -328,7 +339,10 @@ def get_novel_spiral_view(opt,poses,N=60):
     radius = max_y # temporary placeholder
 
     degree = np.linspace(0.0,2.0*np.pi, N)
+    # degree = np.linspace(np.pi / 2.0, np.pi / 2.0, N)
     vertical = np.linspace(-max_y, max_y, N)
+
+    u = normalize(np.array([0.0, 1.0, 0.0]))
 
     poses_R = []
     poses_t = []
@@ -341,7 +355,7 @@ def get_novel_spiral_view(opt,poses,N=60):
 
         cam_positon = np.array([cam_x, cam_y, cam_z])
         cam_positon += center
-        u = normalize(np.array([0.0, 1.0, 0.0]))
+        # print("Camera position: " + str(n) + " " + str(cam_positon))        
 
         look = normalize(center - cam_positon)
         right = normalize(np.cross(look, u))
@@ -350,7 +364,15 @@ def get_novel_spiral_view(opt,poses,N=60):
         R = np.stack([right, up, -look], 1)
         poses_R.append(R)
 
-        t = np.array([-np.dot(right, cam_positon), -np.dot(up, cam_positon), np.dot(look, cam_positon)])
+
+        # Doesn't the pose class take care of any negation?
+        # t = np.array([np.dot(right, cam_positon), np.dot(up, cam_positon), -np.dot(look, cam_positon)])
+
+
+        # t = np.array([-np.dot(right, cam_positon), -np.dot(up, cam_positon), np.dot(look, cam_positon)])
+        t = np.array([cam_positon[0], cam_positon[1], cam_positon[2]])
+        # print("t position:  " + str(n) + " " + str(t))
+        # print("look:    " + str(n) + " " + str(look))
         poses_t.append(t)
 
     return pose(np.stack(poses_R, 0), np.stack(poses_t, 0))
