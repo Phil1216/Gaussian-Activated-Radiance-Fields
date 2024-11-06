@@ -33,7 +33,7 @@ class Dataset(base.Dataset):
         self.path = "{}/{}".format(self.root,opt.data.scene)
 
         self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop)
-        images, poses, bds, K = self.parsePoses(bd_factor, crop, factor)
+        images, poses_raw, bds, K = self.parsePoses(bd_factor, crop, factor)
 
         print('Data:')
         print(poses.shape, images.shape, bds.shape)
@@ -41,20 +41,18 @@ class Dataset(base.Dataset):
         images = images.astype(np.float32)
         poses = poses.astype(np.float32)
 
-        # return images, poses, bds, K
+        self.image_fnames = self.fineViewDir.img_list
+        self.list = list(zip(self.image_fnames, poses_raw, bds))
 
-        # self.path_image = "{}/images".format(self.path)
-        # image_fnames = sorted(os.listdir(self.path_image))
-        # poses_raw,bounds = self.parse_cameras_and_bounds(opt)
-        # self.list = list(zip(image_fnames,poses_raw,bounds))
-        # # manually split train/val subsets
-        # num_val_split = int(len(self)*opt.data.val_ratio)
-        # self.list = self.list[:-num_val_split] if split=="train" else self.list[-num_val_split:]
-        # if subset: self.list = self.list[:subset]
-        # # preload dataset
-        # if opt.data.preload:
-            # self.images = self.preload_threading(opt,self.get_image)
-            # self.cameras = self.preload_threading(opt,self.get_camera,data_str="cameras")
+        # manually split train/val subsets
+        num_val_split = int(len(self)*opt.data.val_ratio)
+        self.list = self.list[:-num_val_split] if split=="train" else self.list[-num_val_split:]
+        if subset: self.list = self.list[:subset]
+
+        # preload dataset
+        if opt.data.preload:
+            self.images = self.preload_threading(opt,self.get_image)
+            self.cameras = self.preload_threading(opt,self.get_camera,data_str="cameras")
 
     def parsePoses(self, bd_factor=.75, crop = True, factor = 1):
 
@@ -71,8 +69,10 @@ class Dataset(base.Dataset):
 
         f = h5py.File(self.fineViewDir.camera_param_path, 'r')
 
-        H, W, focal = self.getHWF(f, self.fineViewDir.img_list, crop, factor)        
-        hwf = np.array([H,W,focal]).reshape([3,1])
+        H, W, focal = self.getHWF(f, self.fineViewDir.img_list, crop, factor)
+        self.focal = focal
+        self.raw_W = W
+        self.raw_H = H        
         
         for i in self.fineViewDir.img_list[::skip]:
             
@@ -218,19 +218,18 @@ class Dataset(base.Dataset):
             bds.append(np.array([close_depth, inf_depth]))
         return np.array(bds).T
 
-    # important
-    def prefetch_all_data(self,opt):
-        assert(not opt.data.augment)
-        # pre-iterate through all samples and group together
-        self.all = torch.utils.data._utils.collate.default_collate([s for s in self])
+    # important TODO
+    # def prefetch_all_data(self,opt):
+    #     assert(not opt.data.augment)
+    #     # pre-iterate through all samples and group together
+    #     self.all = torch.utils.data._utils.collate.default_collate([s for s in self])
 
-    # essential
     def get_all_camera_poses(self,opt):
         pose_raw_all = [tup[1] for tup in self.list]
         pose_all = torch.stack([self.parse_raw_camera(opt,p) for p in pose_raw_all],dim=0)
         return pose_all
 
-    # superclass (essential)
+    # superclass (essential) TODO
     def __getitem__(self,idx):
         opt = self.opt
         sample = dict(idx=idx)
@@ -247,24 +246,22 @@ class Dataset(base.Dataset):
         )
         return sample
 
-    # superclass (unused?)
     def get_image(self,opt,idx):
-        image_fname = "{}/{}".format(self.path_image,self.list[idx][0])
+        image_fname = self.image_fnames[idx]
         image = PIL.Image.fromarray(imageio.imread(image_fname)) # directly using PIL.Image.open() leads to weird corruption....
         return image
 
-    # interface, util_vis.py
     def get_camera(self,opt,idx):
         intr = torch.tensor([[self.focal,0,self.raw_W/2],
                              [0,self.focal,self.raw_H/2],
                              [0,0,1]]).float()
-        pose = self.list[idx][1]
-        #pose = self.parse_raw_camera(opt,pose_raw)
+        pose_raw = self.list[idx][1]
+        pose = self.parse_raw_camera(opt,pose_raw)
         return intr,pose
 
-    # def parse_raw_camera(self,opt,pose_raw):
-    #     pose_flip = camera.pose(R=torch.diag(torch.tensor([1,-1,-1])))
-    #     pose = camera.pose.compose([pose_flip,pose_raw[:3]])
-    #     pose = camera.pose.invert(pose)
-    #     pose = camera.pose.compose([pose_flip,pose])
-    #     return pose
+    def parse_raw_camera(self,opt,pose_raw):
+        pose_flip = camera.pose(R=torch.diag(torch.tensor([1,-1,-1])))
+        pose = camera.pose.compose([pose_flip,pose_raw[:3]])
+        pose = camera.pose.invert(pose)
+        pose = camera.pose.compose([pose_flip,pose])
+        return pose
