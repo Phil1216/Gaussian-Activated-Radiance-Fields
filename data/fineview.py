@@ -32,17 +32,15 @@ class Dataset(base.Dataset):
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
 
-        self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop)
-        images, poses_raw, bds, K = self.parsePoses(bd_factor, crop, factor)
+        self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop, factor)
+        poses_raw, bds, K = self.parsePoses(bd_factor)
 
         print('Data:')
-        print(poses.shape, images.shape, bds.shape)
+        print(poses.shape, bds.shape)        
         
-        images = images.astype(np.float32)
         poses = poses.astype(np.float32)
 
-        self.image_fnames = self.fineViewDir.img_list
-        self.list = list(zip(self.image_fnames, poses_raw, bds))
+        self.list = list(zip(self.fineViewDir.img_list, poses_raw, bds, K))
 
         # manually split train/val subsets
         num_val_split = int(len(self)*opt.data.val_ratio)
@@ -54,32 +52,20 @@ class Dataset(base.Dataset):
             self.images = self.preload_threading(opt,self.get_image)
             self.cameras = self.preload_threading(opt,self.get_camera,data_str="cameras")
 
-    def parsePoses(self, bd_factor=.75, crop = True, factor = 1):
+    def parsePoses(self, bd_factor=.75):
+        factor = self.fineViewDir.factor
 
-        testskip = 1
-        if testskip==0:
-            skip = 1
-        else:
-            skip = testskip
-
-        imgs = []
-        imgs_mask = []
         cam_mats = []
         K = []
 
         f = h5py.File(self.fineViewDir.camera_param_path, 'r')
 
-        H, W, focal = self.getHWF(f, self.fineViewDir.img_list, crop, factor)
-        self.focal = focal
-        self.raw_W = W
-        self.raw_H = H        
+        H, W, focal = self.getHWF(f)
+        self.focal = focal/factor
+        self.raw_W = W//factor
+        self.raw_H = H//factor
         
-        for i in self.fineViewDir.img_list[::skip]:
-            
-            i_path = Path(i)
-            image_original, image_blank = self.initializeMask(i, self.fineViewDir.img_list, i_path, crop)            
-            imgs.append(image_original)
-            imgs_mask.append(image_blank)
+        for i in self.fineViewDir.img_list:
             
             camMat, k_param = self.parseCamParams(i, f, self.fineViewDir.x_min, self.fineViewDir.y_min)
             K.append(k_param)
@@ -96,28 +82,11 @@ class Dataset(base.Dataset):
         #must switch to [-u, r, -t] from [r, -u, t], NOT [r, u, -t]
         poses = np.concatenate([poses[1:2, :, :], poses[0:1, :, :], -poses[2:3, :, :], poses[3:4, :, :]], 1)   
 
-
         bds = self.calcBoundaries(self.fineViewDir.sp_folder, poses)
-
-        #render_poses = torch.stack([pose_spherical(angle, -30.0, 4.0) for angle in np.linspace(-180,180,40+1)[:-1]], 0)
-
-        imgs = (np.array(imgs) / 255.).astype(np.float32) # keep all 4 channels (RGBA)
-        imgs_mask = (np.array(imgs_mask) / 255.).astype(np.float32) 
-
-        if factor != 1:
-            imgs_resized = np.zeros((imgs.shape[0], H, W, 4))
-            for i in range(imgs.shape[0]):
-                imgs_resized[i][:,:,0:3] = cv2.resize(imgs[i], (W, H), interpolation=cv2.INTER_AREA)
-                imgs_resized[i][:,:,3] = cv2.resize(imgs_mask[i], (W, H), interpolation=cv2.INTER_AREA)
-            imgs = imgs_resized
-            # imgs = tf.image.resize_area(imgs, [400, 400]).numpy()
 
         # Correct rotation matrix ordering and move variable dim to axis 0
         poses = np.concatenate([poses[1:2, :, :], -poses[0:1, :, :], poses[2:, :, :]], 1)
         poses = np.moveaxis(poses, -1, 0).astype(np.float32)
-        #no need this 
-        #imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
-        images = imgs
         bds = np.moveaxis(bds, -1, 0).astype(np.float32)
 
         # Rescale if bd_factor is provided
@@ -125,14 +94,18 @@ class Dataset(base.Dataset):
         poses[:,:3,3] *= sc
         bds *= sc
 
-        return images, poses, bds, K
+        poses = torch.from_numpy(poses)
+        bds = torch.from_numpy(bds)
+        K = torch.from_numpy(K)
+
+        return poses, bds, K
     
-    def getHWF(self, paramFile, img_list, crop = True, factor = 1):
-        if crop:    
+    def getHWF(self, paramFile):
+        if self.fineViewDir.crop:    
             H_original = self.fineViewDir.crop_image_size[1]
             W_original = self.fineViewDir.crop_image_size[0]
         else:
-            H_original, W_original = imageio.imread(img_list[0]).shape[:2]
+            H_original, W_original = self.fineViewDir.image_file_size
 
         fx = []
         fy = []
@@ -141,44 +114,8 @@ class Dataset(base.Dataset):
             fy.append(paramFile[i]['mtx'][1,1])
         focals = fx + fy
         focal = np.array(focals).mean() 
-        
-        H = H_original//factor
-        W = W_original//factor
-        focal = focal/factor
-        return H, W, focal
 
-    def initializeMask(self, imageFile, img_list, img_path, crop = True):
-
-        non_debug = True
-
-        crop_image_size = self.fineViewDir.crop_image_size
-        x_min = self.fineViewDir.x_min
-        x_max = self.fineViewDir.x_max
-        y_min = self.fineViewDir.y_min
-        y_max = self.fineViewDir.y_max
-
-        if crop:    
-            H_original = crop_image_size[1]
-            W_original = crop_image_size[0]
-        else:
-            H_original, W_original = imageio.imread(img_list[0]).shape[:2]
-        
-        d_type = imageio.imread(img_list[0]).dtype
-
-        mask_path = Path(self.path).joinpath('crop_mask_undistort', img_path.parts[-4], img_path.parts[-2], img_path.stem + "_mask.png")
-        if non_debug:
-            image_original = imageio.imread(imageFile)
-            
-            if crop:
-                image_blank = imageio.imread(mask_path)[:,:,0]
-            else:
-                image_blank = np.zeros((H_original,W_original), dtype=d_type)
-                image_blank[y_min:y_max,x_min:x_max] = imageio.imread(mask_path)[:,:,0]
-        else:
-            image_original = np.empty((100,100,3))
-            image_blank = np.empty((100,100,1))
-
-        return image_original, image_blank
+        return H_original, W_original, focal
     
     def parseCamParams(self, imageFile, paramFile, x_min, y_min):
         #pose conversion from fineview data
@@ -218,18 +155,16 @@ class Dataset(base.Dataset):
             bds.append(np.array([close_depth, inf_depth]))
         return np.array(bds).T
 
-    # important TODO
-    # def prefetch_all_data(self,opt):
-    #     assert(not opt.data.augment)
-    #     # pre-iterate through all samples and group together
-    #     self.all = torch.utils.data._utils.collate.default_collate([s for s in self])
+    def prefetch_all_data(self,opt):
+        assert(not opt.data.augment)
+        # pre-iterate through all samples and group together
+        self.all = torch.utils.data._utils.collate.default_collate([s for s in self])
 
     def get_all_camera_poses(self,opt):
         pose_raw_all = [tup[1] for tup in self.list]
         pose_all = torch.stack([self.parse_raw_camera(opt,p) for p in pose_raw_all],dim=0)
         return pose_all
 
-    # superclass (essential) TODO
     def __getitem__(self,idx):
         opt = self.opt
         sample = dict(idx=idx)
@@ -247,14 +182,44 @@ class Dataset(base.Dataset):
         return sample
 
     def get_image(self,opt,idx):
-        image_fname = self.image_fnames[idx]
-        image = PIL.Image.fromarray(imageio.imread(image_fname)) # directly using PIL.Image.open() leads to weird corruption....
-        return image
+        image_fname = self.fineViewDir.img_list[idx]
+        img = self.loadMaskedImg(image_fname)
+
+        return PIL.Image.fromarray(img)
+    
+    def loadMaskedImg(self, imageFile):
+        factor = self.fineViewDir.factor
+        x_min = self.fineViewDir.x_min
+        x_max = self.fineViewDir.x_max
+        y_min = self.fineViewDir.y_min
+        y_max = self.fineViewDir.y_max
+
+        img_path = Path(imageFile)
+        mask_path = Path(self.path).joinpath('crop_mask_undistort', img_path.parts[-4], img_path.parts[-2], img_path.stem + "_mask.png")
+        
+        image_original = imageio.imread(imageFile)            
+        if self.fineViewDir.crop:
+            image_mask = imageio.imread(mask_path)[:,:,0]
+        else:
+            image_mask = np.zeros(self.fineViewDir.image_file_size, dtype=self.fineViewDir.file_d_type)
+            image_mask[y_min:y_max,x_min:x_max] = imageio.imread(mask_path)[:,:,0]
+
+
+        img = (np.array(image_original) / 255.).astype(np.float32) # keep all 4 channels (RGBA)
+        mask = (np.array(image_mask) / 255.).astype(np.float32) 
+
+        if factor != 1:
+            img_resized = np.zeros((self.raw_H, self.raw_W, 4))
+            img_resized[:,:,0:3] = cv2.resize(img, (self.raw_W, self.raw_H), interpolation=cv2.INTER_AREA)
+            img_resized[:,:,3] = cv2.resize(mask, (self.raw_W, self.raw_H), interpolation=cv2.INTER_AREA)
+
+            img = img_resized
+            # imgs = tf.image.resize_area(imgs, [400, 400]).numpy()
+
+        return img
 
     def get_camera(self,opt,idx):
-        intr = torch.tensor([[self.focal,0,self.raw_W/2],
-                             [0,self.focal,self.raw_H/2],
-                             [0,0,1]]).float()
+        intr = self.list[idx][3]
         pose_raw = self.list[idx][1]
         pose = self.parse_raw_camera(opt,pose_raw)
         return intr,pose
