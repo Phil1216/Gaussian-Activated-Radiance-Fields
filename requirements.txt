@@ -21,3 +21,5 @@ opencv-python==4.5.2.54
 pyyaml
 kmeans1d
 typing-extensions
+h5py
+open3d

@@ -1,0 +1,111 @@
+H: 480
+W: 640
+arch:
+    density_activ: softplus
+    depth: 6
+    gaussian:
+        sigma: 0.1
+    sigmoid: true
+    skip:
+    - 4
+    width: 256
+batch_size: null
+camera:
+    model: perspective
+    ndc: false
+    noise: null
+cpu: false
+data:
+    augment: {}
+    bgcolor: 1
+    center_crop: null
+    dataset: fineview
+    image_size:
+    - 480
+    - 640
+    num_workers: 4
+    preload: true
+    root: null
+    scene: butterfly
+    train_sub: null
+    val_on_test: false
+    val_ratio: 0.1
+    val_sub: null
+device: cuda:0
+freq:
+    ckpt: 5000
+    scalar: 200
+    val: 2000
+    vis: 1000
+gcp:
+    blob_name: datasets/nerf_llff_data/llff
+    bucket_name: null
+    dest_name: data
+    enabled: false
+gpu: 0
+group: butterflyTest
+init:
+    pose: true
+    pose_warmup: 210000
+    weight:
+        range: 0.1
+        uniform: false
+load: null
+loss:
+    psnr: false
+loss_weight:
+    render: 0
+    render_fine: null
+max_epoch: null
+max_iter: 200000
+model: garf
+name: up
+nerf:
+    density_noise_reg: null
+    depth:
+        param: inverse
+        range:
+        - 1
+        - 0
+    fine_sampling: false
+    rand_rays: 2048
+    sample_intvs: 128
+    sample_intvs_fine: null
+    sample_stratified: true
+    setbg_opaque: null
+    view_dep: true
+optim:
+    algo: Adam
+    lr: 0.0001
+    lr_decay: 250
+    lr_end: 0.0001
+    lr_pose: 0.003
+    lr_pose_end: 1.0e-05
+    sched: null
+    sched_pose:
+        gamma: null
+        type: ExponentialLR
+    test_iter: 100
+    test_photo: true
+    warmup_pose: null
+output_path: ./logs/butterflyTest
+output_root: ./logs
+resume: false
+sampling:
+    batch: null
+    fixed: null
+    random: null
+    random_uniform: null
+seed: 0
+sine:
+    omega_first: 30
+    omega_hidden: 30
+tb:
+    num_images:
+    - 4
+    - 8
+visdom:
+    cam_depth: 0.2
+    port: 9000
+    server: localhost
+yaml: garf_llff
