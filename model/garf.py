@@ -76,7 +76,7 @@ class Model(nerf_gaussian.Model):
             lr = self.optim_pose.param_groups[0]["lr"]
             self.tb.add_scalar("{0}/{1}".format(split,"lr_pose"),lr,step)
         # compute pose error
-        if split=="train" and opt.data.dataset in ["blender","llff", "bleff", "llff_mod"]:
+        if split=="train" and opt.data.dataset in ["blender","llff", "bleff", "llff_mod", "fineview"]:
             pose,pose_GT = self.get_all_training_poses(opt)
             pose_aligned,_ = self.prealign_cameras(opt,pose,pose_GT)
             error = self.evaluate_camera_alignment(opt,pose_aligned,pose_GT)
@@ -190,14 +190,15 @@ class Model(nerf_gaussian.Model):
                 except: continue
             # get the camera poses
             pose,pose_ref = self.get_all_training_poses(opt)
-            if opt.data.dataset in ["blender", "llff", "bleff", "llff_mod"]:
+            if opt.data.dataset in ["blender", "llff", "bleff", "llff_mod", "fineview"]:
                 pose_aligned,_ = self.prealign_cameras(opt,pose,pose_ref)
                 pose_aligned,pose_ref = pose_aligned.detach().cpu(),pose_ref.detach().cpu()
                 dict(
                     blender=util_vis.plot_save_poses_blender,
                     llff=util_vis.plot_save_poses,
                     bleff=util_vis.plot_save_poses,
-                    llff_mod=util_vis.plot_save_poses
+                    llff_mod=util_vis.plot_save_poses,
+                    fineview=util_vis.plot_save_poses,
                 )[opt.data.dataset](opt,fig,pose_aligned,pose_ref=pose_ref,path=cam_path,ep=ep)
             else:
                 pose = pose.detach().cpu()

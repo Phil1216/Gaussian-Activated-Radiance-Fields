@@ -194,7 +194,7 @@ class Model(base.Model):
         else:
             pose_pred,pose_GT = self.get_all_training_poses(opt)
             poses = pose_pred if opt.model=="garf" else pose_GT
-            if opt.model=="garf" and opt.data.dataset in ["llff", "bleff", "llff_mod"]:
+            if opt.model=="garf" and opt.data.dataset in ["llff", "bleff", "llff_mod", "fineview"]:
                 _,sim3 = self.prealign_cameras(opt,pose_pred,pose_GT)
                 scale = sim3.s1/sim3.s0
             else: scale = 1
@@ -208,8 +208,8 @@ class Model(base.Model):
                 print("Using bottom camera")
                 idx_center = poses[..., 1, 3].argmin()
             
-            # pose_novel = camera.get_novel_view_poses(opt,poses[idx_center],N=60,scale=scale).to(opt.device)
-            pose_novel = camera.get_novel_spiral_view(opt, poses, N=60).to(opt.device)
+            pose_novel = camera.get_novel_view_poses(opt,poses[idx_center],N=60,scale=scale).to(opt.device)
+            # pose_novel = camera.get_novel_spiral_view(opt, poses, N=60).to(opt.device)
             # render the novel views
             novel_path = "{}/novel_view".format(opt.output_path)
             os.makedirs(novel_path,exist_ok=True)

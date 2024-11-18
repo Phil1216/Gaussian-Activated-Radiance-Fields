@@ -15,12 +15,13 @@ import open3d as o3d
 from . import base
 import camera
 from util import log,debug
-from fineview_utils.fineview_directory import FineviewDirectory
+from data.fineview_directory import FineviewDirectory
 
 
 class Dataset(base.Dataset):
 
     def __init__(self,opt,split="train",subset=None):
+        self.raw_H,self.raw_W = 3377,3568
         super().__init__(opt,split)
 
         # TODO move to parameter
@@ -28,7 +29,7 @@ class Dataset(base.Dataset):
         bd_factor=.75
         crop = True
         factor = 1
-
+        
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
 
@@ -36,9 +37,7 @@ class Dataset(base.Dataset):
         poses_raw, bds, K = self.parsePoses(bd_factor)
 
         print('Data:')
-        print(poses.shape, bds.shape)        
-        
-        poses = poses.astype(np.float32)
+        print(poses_raw.shape, bds.shape)
 
         self.list = list(zip(self.fineViewDir.img_list, poses_raw, bds, K))
 
@@ -61,6 +60,8 @@ class Dataset(base.Dataset):
         f = h5py.File(self.fineViewDir.camera_param_path, 'r')
 
         H, W, focal = self.getHWF(f)
+        assert(self.raw_H==H and self.raw_W==W)
+
         self.focal = focal/factor
         self.raw_W = W//factor
         self.raw_H = H//factor
@@ -76,23 +77,34 @@ class Dataset(base.Dataset):
         K = np.stack(K)
         K = K/factor
         cam_mats = np.stack(cam_mats, 0)
+        c2w_mats = np.linalg.inv(cam_mats)
 
-        poses = cam_mats[:, :3, :4].transpose([1,2,0])
+        # TODO it turns out that hwf is not necessary for the boundaries calculation
+        hwf = np.array([self.raw_H,self.raw_W,self.focal]).reshape([3,1])
+        poses = c2w_mats[:, :3, :4].transpose([1,2,0])
+        poses = np.concatenate([poses, np.tile(hwf[..., np.newaxis], [1,1,poses.shape[-1]])], 1)
         #fineview pose is world to camera pose and it is same with opencv coordinate. Convert from (right, down, forward) to (right, up, backward) and change to camera to world coordinate 
-        #must switch to [-u, r, -t] from [r, -u, t], NOT [r, u, -t]
-        poses = np.concatenate([poses[1:2, :, :], poses[0:1, :, :], -poses[2:3, :, :], poses[3:4, :, :]], 1)   
+        #must switch to [-u, r, -t] from [r, -u, t], NOT [r, u, -t] (ie we start from [r, -u, t] and not from [r, u, -t])
+        poses = np.concatenate([poses[:, 1:2, :], poses[:, 0:1, :], -poses[:, 2:3, :], poses[:, 3:4, :], poses[:, 4:5, :]], 1)
 
-        bds = self.calcBoundaries(self.fineViewDir.sp_folder, poses)
+        bds = self.calcBoundaries(self.fineViewDir.speciesFolder, poses)
 
         # Correct rotation matrix ordering and move variable dim to axis 0
-        poses = np.concatenate([poses[1:2, :, :], -poses[0:1, :, :], poses[2:, :, :]], 1)
+        poses = np.concatenate([poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)
         poses = np.moveaxis(poses, -1, 0).astype(np.float32)
         bds = np.moveaxis(bds, -1, 0).astype(np.float32)
-
+        
         # Rescale if bd_factor is provided
         sc = 1. if bd_factor is None else 1./(bds.min() * bd_factor)
         poses[:,:3,3] *= sc
         bds *= sc
+
+        # remove last column that contains hwf since it's not necessary
+        poses = poses[:, :, :4]
+
+        poses = poses.astype(np.float32)
+        bds = bds.astype(np.float32)
+        K = K.astype(np.float32)
 
         poses = torch.from_numpy(poses)
         bds = torch.from_numpy(bds)
@@ -141,9 +153,9 @@ class Dataset(base.Dataset):
     def calcBoundaries(self, sp_folder, poses):
         pc_path = self.path + "/correspondence/" + sp_folder + "/" + sp_folder + ".pcd"  
         pcd = o3d.io.read_point_cloud(pc_path)
-        xyz = np.asarray(pcd.points)
+        xyz = np.asarray(pcd.points)      
 
-        zvals = np.sum(-(xyz[:, np.newaxis, :].transpose([2,0,1]) - poses[3:4, :3, :]) * poses[2:3, :3, :], 0)
+        zvals = np.sum(-(xyz[:, np.newaxis, :].transpose([2,0,1]) - poses[:3, 3:4, :]) * poses[:3, 2:3, :], 0)
         print( 'Depth stats', zvals.min(), zvals.max(), zvals.mean() )
         
         bds = []
@@ -205,6 +217,7 @@ class Dataset(base.Dataset):
             image_mask[y_min:y_max,x_min:x_max] = imageio.imread(mask_path)[:,:,0]
 
 
+        # Note: PIL doesn't like division by 255 and produces the error "KeyError: ((1, 1, 3), '<f4')""
         img = (np.array(image_original) / 255.).astype(np.float32) # keep all 4 channels (RGBA)
         mask = (np.array(image_mask) / 255.).astype(np.float32) 
 
@@ -216,6 +229,8 @@ class Dataset(base.Dataset):
             img = img_resized
             # imgs = tf.image.resize_area(imgs, [400, 400]).numpy()
 
+        # PIL doesn't like division by 255, so undo it
+        img = (img * 255.).astype(np.uint8)
         return img
 
     def get_camera(self,opt,idx):
