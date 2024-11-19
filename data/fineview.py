@@ -79,10 +79,7 @@ class Dataset(base.Dataset):
         cam_mats = np.stack(cam_mats, 0)
         c2w_mats = np.linalg.inv(cam_mats)
 
-        # TODO it turns out that hwf is not necessary for the boundaries calculation
-        hwf = np.array([self.raw_H,self.raw_W,self.focal]).reshape([3,1])
         poses = c2w_mats[:, :3, :4].transpose([1,2,0])
-        poses = np.concatenate([poses, np.tile(hwf[..., np.newaxis], [1,1,poses.shape[-1]])], 1)
         #fineview pose is world to camera pose and it is same with opencv coordinate. Convert from (right, down, forward) to (right, up, backward) and change to camera to world coordinate 
         #must switch to [-u, r, -t] from [r, -u, t], NOT [r, u, -t] (ie we start from [r, -u, t] and not from [r, u, -t])
         poses = np.concatenate([poses[:, 1:2, :], poses[:, 0:1, :], -poses[:, 2:3, :], poses[:, 3:4, :], poses[:, 4:5, :]], 1)
@@ -240,8 +237,10 @@ class Dataset(base.Dataset):
         return intr,pose
 
     def parse_raw_camera(self,opt,pose_raw):
-        pose_flip = camera.pose(R=torch.diag(torch.tensor([1,-1,-1])))
-        pose = camera.pose.compose([pose_flip,pose_raw[:3]])
-        pose = camera.pose.invert(pose)
-        pose = camera.pose.compose([pose_flip,pose])
-        return pose
+        # It was already inverted once, no need to do it again
+        # pose_flip = camera.pose(R=torch.diag(torch.tensor([1,-1,-1])))
+        # pose = camera.pose.compose([pose_flip,pose_raw[:3]])
+        # pose = camera.pose.invert(pose)
+        # pose = camera.pose.compose([pose_flip,pose])
+
+        return pose_raw
