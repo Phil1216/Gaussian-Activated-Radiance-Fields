@@ -16,6 +16,7 @@ from . import base
 import camera
 from util import log,debug
 from data.fineview_directory import FineviewDirectory
+import random
 
 
 class Dataset(base.Dataset):
@@ -29,6 +30,8 @@ class Dataset(base.Dataset):
         bd_factor=.75
         crop = True
         factor = 1
+
+        seed =  4242
         
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
@@ -40,6 +43,8 @@ class Dataset(base.Dataset):
         print(poses_raw.shape, bds.shape)
 
         self.list = list(zip(self.fineViewDir.img_list, poses_raw, bds, K))
+        # Shuffle since we don't want to pull consecutive images from training set
+        random.Random(seed).shuffle(self.list)
 
         # manually split train/val subsets
         num_val_split = int(len(self)*opt.data.val_ratio)
@@ -95,9 +100,6 @@ class Dataset(base.Dataset):
         sc = 1. if bd_factor is None else 1./(bds.min() * bd_factor)
         poses[:,:3,3] *= sc
         bds *= sc
-
-        # remove last column that contains hwf since it's not necessary
-        poses = poses[:, :, :4]
 
         poses = poses.astype(np.float32)
         bds = bds.astype(np.float32)
@@ -237,10 +239,9 @@ class Dataset(base.Dataset):
         return intr,pose
 
     def parse_raw_camera(self,opt,pose_raw):
-        # It was already inverted once, no need to do it again
-        # pose_flip = camera.pose(R=torch.diag(torch.tensor([1,-1,-1])))
-        # pose = camera.pose.compose([pose_flip,pose_raw[:3]])
-        # pose = camera.pose.invert(pose)
-        # pose = camera.pose.compose([pose_flip,pose])
+        pose_flip = camera.pose(R=torch.diag(torch.tensor([1,-1,-1])))
+        pose = camera.pose.compose([pose_flip,pose_raw[:3]])
+        pose = camera.pose.invert(pose)
+        pose = camera.pose.compose([pose_flip,pose])
 
         return pose_raw
