@@ -79,10 +79,7 @@ class Dataset(base.Dataset):
         cam_mats = np.stack(cam_mats, 0)
         c2w_mats = np.linalg.inv(cam_mats)
 
-        # TODO it turns out that hwf is not necessary for the boundaries calculation
-        hwf = np.array([self.raw_H,self.raw_W,self.focal]).reshape([3,1])
         poses = c2w_mats[:, :3, :4].transpose([1,2,0])
-        poses = np.concatenate([poses, np.tile(hwf[..., np.newaxis], [1,1,poses.shape[-1]])], 1)
         #fineview pose is world to camera pose and it is same with opencv coordinate. Convert from (right, down, forward) to (right, up, backward) and change to camera to world coordinate 
         #must switch to [-u, r, -t] from [r, -u, t], NOT [r, u, -t] (ie we start from [r, -u, t] and not from [r, u, -t])
         poses = np.concatenate([poses[:, 1:2, :], poses[:, 0:1, :], -poses[:, 2:3, :], poses[:, 3:4, :], poses[:, 4:5, :]], 1)
@@ -98,9 +95,6 @@ class Dataset(base.Dataset):
         sc = 1. if bd_factor is None else 1./(bds.min() * bd_factor)
         poses[:,:3,3] *= sc
         bds *= sc
-
-        # remove last column that contains hwf since it's not necessary
-        poses = poses[:, :, :4]
 
         poses = poses.astype(np.float32)
         bds = bds.astype(np.float32)
