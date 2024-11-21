@@ -18,7 +18,6 @@ from util import log,debug
 from data.fineview_directory import FineviewDirectory
 import random
 
-
 class Dataset(base.Dataset):
 
     def __init__(self,opt,split="train",subset=None):
@@ -31,7 +30,7 @@ class Dataset(base.Dataset):
         crop = True
         factor = 1
 
-        seed =  4242
+        seed = 4242
         
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
