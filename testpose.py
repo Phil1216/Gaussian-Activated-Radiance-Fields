@@ -12,7 +12,7 @@ from tqdm import tqdm, trange
 import matplotlib.pyplot as plt
 
 import options
-from data.llff_mod import Dataset as llffDataset
+from data.fineview import Dataset as llffDataset
 
 #from extrinsic2pyramid.util.camera_pose_visualizer import CameraPoseVisualizer
 #visualizer = CameraPoseVisualizer([-10, 10], [-10, 10], [-10, 10])
@@ -24,21 +24,23 @@ visualizer = camera_visualizer()
 
 # breakpoint()
 
-myOptionsDir = '/home/pr245/projects/butterfly/garf/logs/butterfly/up/options.yaml'
+# myOptionsDir = '/home/pr245/projects/butterfly/garf/logs/butterfly/up/options.yaml'
 # myOptionsDir = '/home/pr245/projects/butterfly/garf/logs/0_test/fern/options.yaml'
+myOptionsDir = "./fineview_options.yaml"
+
 opt = options.load_options(myOptionsDir)
 
 # disable train/test split
 # opt.data.val_ratio = 0 
 opt.data.preload = False
+
 train_data = llffDataset(opt,split="train",subset=opt.data.train_sub)
 poses_train = train_data.get_all_camera_poses(opt).cpu().detach().numpy()
 
 eval_data = llffDataset(opt,split="eval",subset=opt.data.train_sub)
 poses_eval = eval_data.get_all_camera_poses(opt).cpu().detach().numpy()
 
-#llff only
-#breakpoint()
+
 poses = np.concatenate([poses_train, poses_eval], 0)
 poses = poses[:,:3,:4]
 
@@ -70,7 +72,7 @@ for count, i in enumerate(poses):
     mat4 = np.vstack((i, tmp.T))
     mat_i = np.linalg.inv(mat4)
 
-    n_poses[count] = mat4
+    n_poses[count] = mat_i
 
     #visualizer2.extrinsic2pyramid(i, "red", 1)
 #visualizer.plot_camera_scene(poses,0.5,"red","pose")
@@ -81,7 +83,9 @@ remove = np.concatenate([np.arange(i, i + 4) for i in remove])
 # n_poses = np.delete(n_poses, remove, axis = 0)
 
 visualizer.plot_camera_scene(n_poses,0.2,"red","pose")
-visualizer.save("test_b001_up_w2c.png")
+
+# visualizer.save("test_b001_up_w2c.png")
+visualizer.save("test_fineview.png")
 # visualizer.save("test_fern_w2c.png")
 
 visualizer.show()
