@@ -16,7 +16,7 @@ from . import base
 import camera
 from util import log,debug
 from data.fineview_directory import FineviewDirectory
-
+import random
 
 class Dataset(base.Dataset):
 
@@ -29,6 +29,8 @@ class Dataset(base.Dataset):
         bd_factor=.75
         crop = True
         factor = 1
+
+        seed = 4242
         
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
@@ -40,6 +42,8 @@ class Dataset(base.Dataset):
         print(poses_raw.shape, bds.shape)
 
         self.list = list(zip(self.fineViewDir.img_list, poses_raw, bds, K))
+        # Shuffle since we don't want to pull consecutive images from training set
+        random.Random(seed).shuffle(self.list)
 
         # manually split train/val subsets
         num_val_split = int(len(self)*opt.data.val_ratio)
