@@ -5,7 +5,7 @@ import imageio
 
 class FineviewDirectory():
 
-    def __init__(self, path, speciesIndex = 0, crop = True, factor = 1):
+    def __init__(self, path, speciesIndex = 0, crop = True, factor = 1, firstOnly = False):
         self.path = path
         self.speciesIndex = speciesIndex
         self.crop = crop
@@ -15,7 +15,7 @@ class FineviewDirectory():
         self.camera_param_path = self.path + '/camera_pram_2_no180_2_opt.h5'
         
         self.x_min, self.x_max, self.y_min, self.y_max, self.crop_image_size = self.getCropParams()
-        self.img_list, self.speciesFolder = self.gatherImages()
+        self.img_list, self.speciesFolder = self.gatherImages(firstOnly)
 
         tmp = imageio.imread(self.img_list[0])
         self.image_file_size = tmp.shape[:2]
@@ -31,7 +31,7 @@ class FineviewDirectory():
 
         return x_min, x_max, y_min, y_max, crop_image_size
 
-    def gatherImages(self):
+    def gatherImages(self, firstOnly = False):
 
         if self.crop:
             extention = 'png'
@@ -59,6 +59,16 @@ class FineviewDirectory():
         l6.sort()
         l7.sort()
         l8.sort()
+        
+        if (firstOnly):
+            l1 = l1[0]
+            l2 = l2[0]
+            l3 = l3[0]
+            l4 = l4[0]
+            l5 = l5[0]
+            l6 = l6[0]
+            l7 = l7[0]
+            l8 = l8[0]
 
         img_list = l1 + l2 + l3 + l4 + l5 + l6 + l7 + l8
         img_list.sort()

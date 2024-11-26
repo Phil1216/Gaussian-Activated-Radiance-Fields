@@ -35,7 +35,7 @@ class Dataset(base.Dataset):
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
 
-        self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop, factor)
+        self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop, factor, False)
         poses_raw, bds, K = self.parsePoses(bd_factor)
 
         print('Data:')
@@ -48,6 +48,7 @@ class Dataset(base.Dataset):
         # manually split train/val subsets
         num_val_split = int(len(self)*opt.data.val_ratio)
         self.list = self.list[:-num_val_split] if split=="train" else self.list[-num_val_split:]
+        # self.list = self.list if split=="train" else self.list
         if subset: self.list = self.list[:subset]
 
         # preload dataset
@@ -86,7 +87,7 @@ class Dataset(base.Dataset):
         poses = c2w_mats[:, :3, :4].transpose([1,2,0])
         #fineview pose is world to camera pose and it is same with opencv coordinate. Convert from (right, down, forward) to (right, up, backward) and change to camera to world coordinate 
         #must switch to [-u, r, -t] from [r, -u, t], NOT [r, u, -t] (ie we start from [r, -u, t] and not from [r, u, -t])
-        poses = np.concatenate([poses[:, 1:2, :], poses[:, 0:1, :], -poses[:, 2:3, :], poses[:, 3:4, :], poses[:, 4:5, :]], 1)
+        poses = np.concatenate([poses[:, 1:2, :], poses[:, 0:1, :], -poses[:, 2:3, :], poses[:, 3:4, :]], 1)
 
         bds = self.calcBoundaries(self.fineViewDir.speciesFolder, poses)
 
