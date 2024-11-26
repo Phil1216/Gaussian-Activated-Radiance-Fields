@@ -31,15 +31,12 @@ class Dataset(base.Dataset):
         bd_factor=.75
         crop = True
         factor = 1
-
-        firstOnly = False
-
         
         
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
 
-        self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop, factor, firstOnly)
+        self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop, factor, opt.data.firstOnly)
         poses_raw, bds, K = self.parsePoses(bd_factor)
 
         print('Data:')
@@ -52,7 +49,7 @@ class Dataset(base.Dataset):
         # manually split train/val subsets
         num_val_split = int(len(self)*opt.data.val_ratio)
 
-        if firstOnly:
+        if opt.data.firstOnly:
             # There are so few we want to use all for training and the same for validation 
             self.list = self.list if split=="train" else self.list
         else:
