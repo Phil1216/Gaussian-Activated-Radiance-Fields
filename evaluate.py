@@ -29,7 +29,7 @@ def main():
         if opt.data.dataset in ["bleff", "blender","llff", "llff_mod", "fineview"]:
             m.evaluate_full(opt)
         #log.info("rendering novel views...")
-        m.generate_videos_synthesis(opt, topCam = True)
+        m.generate_videos_synthesis(opt, topCam = True, spiral = False)
         log.model("************************************************** Done **************************************************")
 
 

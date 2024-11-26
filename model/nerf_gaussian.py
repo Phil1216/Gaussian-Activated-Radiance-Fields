@@ -181,7 +181,7 @@ class Model(base.Model):
                 util_vis.tb_image(opt,self.tb,step,split,"invdepth_fine",invdepth_map)
 
     @torch.no_grad()
-    def generate_videos_synthesis(self,opt,eps=1e-10,topCam=None):
+    def generate_videos_synthesis(self,opt,eps=1e-10,topCam=None,spiral=False):
         self.graph.eval()
         if opt.data.dataset=="blender":
             test_path = "{}/test_view".format(opt.output_path)
@@ -208,8 +208,11 @@ class Model(base.Model):
                 print("Using bottom camera")
                 idx_center = poses[..., 1, 3].argmin()
             
-            pose_novel = camera.get_novel_view_poses(opt,poses[idx_center],N=60,scale=scale).to(opt.device)
-            # pose_novel = camera.get_novel_spiral_view(opt, poses, N=60).to(opt.device)
+            if spiral is True:
+                pose_novel = camera.get_novel_spiral_view(opt, poses, N=60).to(opt.device)
+            else:                
+                pose_novel = camera.get_novel_view_poses(opt,poses[idx_center],N=60,scale=scale).to(opt.device)
+                
             # render the novel views
             novel_path = "{}/novel_view".format(opt.output_path)
             os.makedirs(novel_path,exist_ok=True)

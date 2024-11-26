@@ -24,18 +24,22 @@ class Dataset(base.Dataset):
         self.raw_H,self.raw_W = 3377,3568
         super().__init__(opt,split)
 
+        seed = 4242
+
         # TODO move to parameter
         speciesIndex = 0
         bd_factor=.75
         crop = True
         factor = 1
 
-        seed = 4242
+        firstOnly = False
+
+        
         
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
 
-        self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop, factor, False)
+        self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop, factor, firstOnly)
         poses_raw, bds, K = self.parsePoses(bd_factor)
 
         print('Data:')
@@ -47,8 +51,13 @@ class Dataset(base.Dataset):
 
         # manually split train/val subsets
         num_val_split = int(len(self)*opt.data.val_ratio)
-        self.list = self.list[:-num_val_split] if split=="train" else self.list[-num_val_split:]
-        # self.list = self.list if split=="train" else self.list
+
+        if firstOnly:
+            # There are so few we want to use all for training and the same for validation 
+            self.list = self.list if split=="train" else self.list
+        else:
+            self.list = self.list[:-num_val_split] if split=="train" else self.list[-num_val_split:]
+
         if subset: self.list = self.list[:subset]
 
         # preload dataset
