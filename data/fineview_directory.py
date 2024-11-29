@@ -5,11 +5,10 @@ import imageio
 
 class FineviewDirectory():
 
-    def __init__(self, path, speciesIndex = 0, crop = True, factor = 1, firstOnly = False):
+    def __init__(self, path, speciesIndex = 0, crop = True, firstOnly = False):
         self.path = path
         self.speciesIndex = speciesIndex
         self.crop = crop
-        self.factor = factor
 
         self.crop_param_path = self.path + '/crop_pram_undistort.h5'
         self.camera_param_path = self.path + '/camera_pram_2_no180_2_opt.h5'

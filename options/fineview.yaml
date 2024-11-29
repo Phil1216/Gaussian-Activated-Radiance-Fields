@@ -1,6 +1,7 @@
 _parent_: options/nerf_gaussian_llff.yaml
 
-data:
+data:                                                       # options for the data set
+    speciesIndex: 0                                         # the numerical index within the fineview dataset that corresponds to the species
     firstOnly: False                                        # use only the first image for each of the 8 cameras (True|False)
 
 camera:                                                     # camera options

@@ -27,16 +27,14 @@ class Dataset(base.Dataset):
         seed = 4242
 
         # TODO move to parameter
-        speciesIndex = 0
         bd_factor=.75
         crop = True
-        factor = 1
         
         
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
 
-        self.fineViewDir = FineviewDirectory(self.path, speciesIndex, crop, factor, opt.data.firstOnly)
+        self.fineViewDir = FineviewDirectory(self.path, opt.data.speciesIndex, crop, opt.data.firstOnly)
         poses_raw, bds, K = self.parsePoses(bd_factor)
 
         print('Data:')
@@ -63,8 +61,6 @@ class Dataset(base.Dataset):
             self.cameras = self.preload_threading(opt,self.get_camera,data_str="cameras")
 
     def parsePoses(self, bd_factor=.75):
-        factor = self.fineViewDir.factor
-
         cam_mats = []
         K = []
 
@@ -73,9 +69,9 @@ class Dataset(base.Dataset):
         H, W, focal = self.getHWF(f)
         assert(self.raw_H==H and self.raw_W==W)
 
-        self.focal = focal/factor
-        self.raw_W = W//factor
-        self.raw_H = H//factor
+        self.focal = focal
+        self.raw_W = W
+        self.raw_H = H
         
         for i in self.fineViewDir.img_list:
             
@@ -86,7 +82,7 @@ class Dataset(base.Dataset):
         f.close()
 
         K = np.stack(K)
-        K = K/factor
+        K = K
         cam_mats = np.stack(cam_mats, 0)
         c2w_mats = np.linalg.inv(cam_mats)
 
@@ -205,7 +201,6 @@ class Dataset(base.Dataset):
         return PIL.Image.fromarray(img)
     
     def loadMaskedImg(self, imageFile):
-        factor = self.fineViewDir.factor
         x_min = self.fineViewDir.x_min
         x_max = self.fineViewDir.x_max
         y_min = self.fineViewDir.y_min
@@ -226,13 +221,14 @@ class Dataset(base.Dataset):
         img = (np.array(image_original) / 255.).astype(np.float32) # keep all 4 channels (RGBA)
         mask = (np.array(image_mask) / 255.).astype(np.float32) 
 
-        if factor != 1:
-            img_resized = np.zeros((self.raw_H, self.raw_W, 4))
-            img_resized[:,:,0:3] = cv2.resize(img, (self.raw_W, self.raw_H), interpolation=cv2.INTER_AREA)
-            img_resized[:,:,3] = cv2.resize(mask, (self.raw_W, self.raw_H), interpolation=cv2.INTER_AREA)
+        # From now on factor always equals
+        # if factor != 1:
+        #     img_resized = np.zeros((self.raw_H, self.raw_W, 4))
+        #     img_resized[:,:,0:3] = cv2.resize(img, (self.raw_W, self.raw_H), interpolation=cv2.INTER_AREA)
+        #     img_resized[:,:,3] = cv2.resize(mask, (self.raw_W, self.raw_H), interpolation=cv2.INTER_AREA)
 
-            img = img_resized
-            # imgs = tf.image.resize_area(imgs, [400, 400]).numpy()
+        #     img = img_resized
+        #     # imgs = tf.image.resize_area(imgs, [400, 400]).numpy()
 
         # PIL doesn't like division by 255, so undo it
         img = (img * 255.).astype(np.uint8)
