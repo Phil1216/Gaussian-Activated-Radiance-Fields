@@ -60,14 +60,14 @@ class FineviewDirectory():
         l8.sort()
         
         if (firstOnly):
-            l1 = l1[0]
-            l2 = l2[0]
-            l3 = l3[0]
-            l4 = l4[0]
-            l5 = l5[0]
-            l6 = l6[0]
-            l7 = l7[0]
-            l8 = l8[0]
+            l1 = [l1[0]]
+            l2 = [l2[0]]
+            l3 = [l3[0]]
+            l4 = [l4[0]]
+            l5 = [l5[0]]
+            l6 = [l6[0]]
+            l7 = [l7[0]]
+            l8 = [l8[0]]
 
         img_list = l1 + l2 + l3 + l4 + l5 + l6 + l7 + l8
         img_list.sort()

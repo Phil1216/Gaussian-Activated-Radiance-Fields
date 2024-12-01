@@ -34,7 +34,7 @@ class Dataset(base.Dataset):
         self.root = opt.data.root or "data/fineview"
         self.path = "{}/{}".format(self.root,opt.data.scene)
 
-        self.fineViewDir = FineviewDirectory(self.path, opt.data.speciesIndex, crop, opt.data.firstOnly)
+        self.fineViewDir = FineviewDirectory(self.path, opt.data.get("speciesIndex", 0), crop, opt.data.get("firstOnly", False))
         poses_raw, bds, K = self.parsePoses(bd_factor)
 
         print('Data:')
@@ -47,7 +47,7 @@ class Dataset(base.Dataset):
         # manually split train/val subsets
         num_val_split = int(len(self)*opt.data.val_ratio)
 
-        if opt.data.firstOnly:
+        if opt.data.get("firstOnly", False):
             # There are so few we want to use all for training and the same for validation 
             self.list = self.list if split=="train" else self.list
         else:
@@ -246,4 +246,4 @@ class Dataset(base.Dataset):
         pose = camera.pose.invert(pose)
         pose = camera.pose.compose([pose_flip,pose])
 
-        return pose_raw
+        return pose
