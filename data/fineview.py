@@ -24,7 +24,7 @@ class Dataset(base.Dataset):
         self.raw_H,self.raw_W = 3377,3568
         super().__init__(opt,split)
 
-        seed = 4242
+        seed = opt.data.preshuffleSeed
 
         # TODO move to parameter
         bd_factor=.75
@@ -41,8 +41,10 @@ class Dataset(base.Dataset):
         print(poses_raw.shape, bds.shape)
 
         self.list = list(zip(self.fineViewDir.img_list, poses_raw, bds, K))
-        # Shuffle since we don't want to pull consecutive images from training set
-        random.Random(seed).shuffle(self.list)
+        
+        if (opt.data.preshuffle):
+            # Shuffle since we don't want to pull consecutive images from training set
+            random.Random(seed).shuffle(self.list)
 
         # manually split train/val subsets
         num_val_split = int(len(self)*opt.data.val_ratio)
@@ -51,7 +53,11 @@ class Dataset(base.Dataset):
             # There are so few we want to use all for training and the same for validation 
             self.list = self.list if split=="train" else self.list
         else:
-            self.list = self.list[:-num_val_split] if split=="train" else self.list[-num_val_split:]
+            if (not opt.data.keepValid):
+                self.list = self.list[:-num_val_split] if split=="train" else self.list[-num_val_split:]
+            else:
+                self.list = self.list if split=="train" else self.list[-num_val_split:]
+                            
 
         if subset: self.list = self.list[:subset]
 
@@ -195,7 +201,7 @@ class Dataset(base.Dataset):
         return sample
 
     def get_image(self,opt,idx):
-        image_fname = self.fineViewDir.img_list[idx]
+        image_fname = self.list[idx][0]
         img = self.loadMaskedImg(image_fname)
 
         return PIL.Image.fromarray(img)
@@ -221,7 +227,7 @@ class Dataset(base.Dataset):
         img = (np.array(image_original) / 255.).astype(np.float32) # keep all 4 channels (RGBA)
         mask = (np.array(image_mask) / 255.).astype(np.float32) 
 
-        # From now on factor always equals
+        # From now on factor always equals 1
         # if factor != 1:
         #     img_resized = np.zeros((self.raw_H, self.raw_W, 4))
         #     img_resized[:,:,0:3] = cv2.resize(img, (self.raw_W, self.raw_H), interpolation=cv2.INTER_AREA)

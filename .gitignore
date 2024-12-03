@@ -6,3 +6,4 @@ nerf_synthetic/
 data/llff/fern
 eval.sh
 run.sh
+test_eval.sh
