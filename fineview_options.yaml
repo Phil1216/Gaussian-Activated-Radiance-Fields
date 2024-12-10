@@ -30,7 +30,12 @@ data:
     train_sub: null
     val_on_test: false
     val_ratio: 0.1
-    val_sub: null
+    val_sub: null,
+    speciesIndex: 0
+    firstOnly: False
+    preshuffle: False
+    preshuffleSeed: 4242
+    keepValid: False
 device: cuda:0
 freq:
     ckpt: 5000

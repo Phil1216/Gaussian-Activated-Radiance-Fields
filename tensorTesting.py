@@ -78,18 +78,31 @@ class Dataset(base.Dataset):
         print(torch.from_numpy(c2w_mats))
 
         poses = c2w_mats[:, :3, :4].transpose([1,2,0])
+        print("Transposed")
+        print(torch.from_numpy(poses))
+
         #fineview pose is world to camera pose and it is same with opencv coordinate. Convert from (right, down, forward) to (right, up, backward) and change to camera to world coordinate 
         #must switch to [-u, r, -t] from [r, -u, t], NOT [r, u, -t] (ie we start from [r, -u, t] and not from [r, u, -t])
-        poses = np.concatenate([poses[:, 1:2, :], poses[:, 0:1, :], -poses[:, 2:3, :], poses[:, 3:4, :], poses[:, 4:5, :]], 1)
+        poses = np.concatenate([poses[:, 1:2, :], poses[:, 0:1, :], -poses[:, 2:3, :], poses[:, 3:4, :]], 1)
+        print("First rearrange")
         
-        print("The boundaries are")
+        tmp = np.copy(poses)
+        tmp = np.moveaxis(tmp, -1, 0)
+        print(tmp.shape)
+        print(torch.from_numpy(tmp))
+
+        # print("The boundaries are")
         bds = self.calcBoundaries(self.fineViewDir.speciesFolder, poses)
-        print(bds)
+        # print(bds)
 
         # Correct rotation matrix ordering and move variable dim to axis 0
         poses = np.concatenate([poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)
         poses = np.moveaxis(poses, -1, 0).astype(np.float32)
         bds = np.moveaxis(bds, -1, 0).astype(np.float32)
+        
+        print("Second rearrange")
+        print(poses.shape)
+        print(torch.from_numpy(poses))
         
         # Rescale if bd_factor is provided
         # sc = 1. if bd_factor is None else 1./(bds.min() * bd_factor)
@@ -242,12 +255,10 @@ class Dataset(base.Dataset):
         return intr,pose
 
     def parse_raw_camera(self,opt,pose_raw):
-        print("Running parse_raw_camera")
         pose_flip = camera.pose(R=torch.diag(torch.tensor([1,-1,-1])))
         pose = camera.pose.compose([pose_flip,pose_raw[:3]])
         pose = camera.pose.invert(pose)
         pose = camera.pose.compose([pose_flip,pose])
-        print("Finished parse_raw_camera")
         return pose
 
 

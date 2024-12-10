@@ -42,6 +42,7 @@ class Dataset(base.Dataset):
 
         self.list = list(zip(self.fineViewDir.img_list, poses_raw, bds, K))
         
+        # TODO instead of shuffling, find some kind of random sample w/out replacement to get validation set (numpy or pytorch)
         if (opt.data.preshuffle):
             # Shuffle since we don't want to pull consecutive images from training set
             random.Random(seed).shuffle(self.list)

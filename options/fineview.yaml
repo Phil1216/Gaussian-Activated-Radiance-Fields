@@ -2,10 +2,10 @@ _parent_: options/nerf_gaussian_llff.yaml
 
 data:                                                       # options for the data set
     speciesIndex: 0                                         # the numerical index within the fineview dataset that corresponds to the species
-    firstOnly: False                                        # use only the first image for each of the 8 cameras (True|False)
+    firstOnly: False                                        # use only the first image for each of the 8 cameras (True|False) (debugging)
     preshuffle: False                                       # shuffle before selecting validation set so that we don't remove consecutive images from training set
-    preshuffleSeed: 4242                                    # the random seed to use for preshuffle
-    keepValid: False                                        # whether to keep the validation set in the training set
+    preshuffleSeed: 4242                                    # the random seed to use for preshuffle (number)
+    keepValid: False                                        # whether to keep the validation set in the training set (True|False) (debugging)
 
 camera:                                                     # camera options
     noise:                                                  # synthetic perturbations on the camera poses (Blender only)

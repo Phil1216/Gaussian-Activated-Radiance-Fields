@@ -338,9 +338,10 @@ def get_novel_spiral_view(opt,poses,N=60):
     max_y = poses[idx_top, ..., 1, 3].abs().item()
     radius = max_y # temporary placeholder
 
-    degree = np.linspace(0.0,2.0*np.pi, N)
-    # degree = np.linspace(np.pi / 2.0, np.pi / 2.0, N)
-    vertical = np.linspace(-max_y, max_y, N)
+    # degree = np.linspace(0.0,2.0*np.pi, N)
+    degree = np.linspace(np.pi / 2.0, np.pi / 2.0, N)
+    vertical = np.linspace(-max_y * 4, max_y * 4, N)
+    # vertical = np.linspace(0, 0, N)
 
     u = normalize(np.array([0.0, 1.0, 0.0]))
 
@@ -350,7 +351,7 @@ def get_novel_spiral_view(opt,poses,N=60):
         theta = degree[n]
 
         cam_x = radius * np.cos(theta)
-        cam_y = vertical[n]
+        cam_y = -vertical[n]
         cam_z = radius * np.sin(theta)
 
         cam_positon = np.array([cam_x, cam_y, cam_z])
@@ -365,12 +366,9 @@ def get_novel_spiral_view(opt,poses,N=60):
         poses_R.append(R)
 
 
-        # Doesn't the pose class take care of any negation?
-        # t = np.array([np.dot(right, cam_positon), np.dot(up, cam_positon), -np.dot(look, cam_positon)])
+        t = np.array([-np.dot(right, cam_positon), -np.dot(up, cam_positon), np.dot(look, cam_positon)])
 
-
-        # t = np.array([-np.dot(right, cam_positon), -np.dot(up, cam_positon), np.dot(look, cam_positon)])
-        t = np.array([cam_positon[0], cam_positon[1], cam_positon[2]])
+        # t = np.array([cam_positon[0], cam_positon[1], cam_positon[2]])
         # print("t position:  " + str(n) + " " + str(t))
         # print("look:    " + str(n) + " " + str(look))
         poses_t.append(t)

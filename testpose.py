@@ -72,7 +72,7 @@ for count, i in enumerate(poses):
     mat4 = np.vstack((i, tmp.T))
     mat_i = np.linalg.inv(mat4)
 
-    n_poses[count] = mat_i
+    n_poses[count] = mat4
 
     #visualizer2.extrinsic2pyramid(i, "red", 1)
 #visualizer.plot_camera_scene(poses,0.5,"red","pose")
