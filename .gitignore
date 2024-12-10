@@ -7,3 +7,6 @@ data/llff/fern
 eval.sh
 run.sh
 test_eval.sh
+!example_runs/eval.sh
+!example_runs/run.sh
+!example_runs/test_eval.sh
